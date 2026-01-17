@@ -3,12 +3,30 @@ from firebase_admin import credentials, auth
 from functools import wraps
 from flask import request, jsonify
 import os
+import json 
+import tempfile 
 
 # Initialize Firebase Admin (only once)
 # Check if already initialized to avoid duplicate initialization
 if not firebase_admin._apps:
-    cred_path = os.path.join(os.path.dirname(__file__), "firebase-credentials.json")
-    cred = credentials.Certificate(cred_path)
+    if os.getenv('FIREBASE_CREDENTIALS_JSON'):
+        # Running on Render - credentials in environment variable
+        print("🔧 Loading Firebase credentials from environment variable...")
+        creds_json = json.loads(os.getenv('FIREBASE_CREDENTIALS_JSON'))
+        
+        # Create temporary file with credentials
+        temp_creds = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json')
+        json.dump(creds_json, temp_creds)
+        temp_creds.close()
+        
+        cred = credentials.Certificate(temp_creds.name)
+        print(f"✅ Firebase credentials loaded from environment")
+    else:
+        # Running locally - use file path
+        cred_path = os.path.join(os.path.dirname(__file__), "firebase-credentials.json")
+        cred = credentials.Certificate(cred_path)
+        print(f"🔧 Using local Firebase credentials: {cred_path}")
+    
     firebase_admin.initialize_app(cred)
     print("✅ Firebase Admin initialized for authentication")
 

@@ -9,6 +9,7 @@ import os
 import re 
 import time 
 from functools import wraps 
+import tempfile 
 
 
 class FirebaseClient:
@@ -18,11 +19,20 @@ class FirebaseClient:
     
     def _initialize(self):
         """Initialize Firebase"""
-        firebase_creds = os.getenv('FIREBASE_CREDENTIALS')
-        if firebase_creds:
-            cred_dict = json.loads(firebase_creds)
-            cred = credentials.Certificate(cred_dict)
+        import tempfile
+        
+        if os.getenv('FIREBASE_CREDENTIALS_JSON'):
+            # Running on Render - credentials in environment variable
+            cred_dict = json.loads(os.getenv('FIREBASE_CREDENTIALS_JSON'))
+            
+            # Create temporary file
+            temp_creds = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json')
+            json.dump(cred_dict, temp_creds)
+            temp_creds.close()
+            
+            cred = credentials.Certificate(temp_creds.name)
         else:
+            # Running locally - use file path
             cred = credentials.Certificate("firebase-credentials.json")
         
         if not firebase_admin._apps:

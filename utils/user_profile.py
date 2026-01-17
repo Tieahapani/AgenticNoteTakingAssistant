@@ -9,10 +9,23 @@ class UserProfile:
     
     def __init__(self):
         if not firebase_admin._apps:
-            firebase_cred_path = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)),
-                "firebase-credentials.json"
-            )
+            import json
+            import tempfile
+            
+            if os.getenv('FIREBASE_CREDENTIALS_JSON'):
+                # Running on Render - credentials in environment variable
+                creds_json = json.loads(os.getenv('FIREBASE_CREDENTIALS_JSON'))
+                temp_creds = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json')
+                json.dump(creds_json, temp_creds)
+                temp_creds.close()
+                firebase_cred_path = temp_creds.name
+            else:
+                # Running locally - use file path
+                firebase_cred_path = os.path.join(
+                    os.path.dirname(os.path.dirname(__file__)),
+                    "firebase-credentials.json"
+                )
+            
             cred = credentials.Certificate(firebase_cred_path)
             firebase_admin.initialize_app(cred)
         
