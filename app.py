@@ -13,6 +13,8 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_cors import CORS
 import os
 import threading
+import json 
+import tempfile 
 import sys
 import asyncio
 import time
@@ -32,6 +34,25 @@ from firebase_admin import auth as firebase_auth
 
 load_dotenv()
 
+firebase_cred_path = None
+
+if os.getenv('FIREBASE_CREDENTIALS_JSON'):
+    # Running on Render - credentials in environment variable
+    print("🔧 Loading Firebase credentials from environment variable...")
+    creds_json = json.loads(os.getenv('FIREBASE_CREDENTIALS_JSON'))
+    
+    # Create temporary file with credentials
+    temp_creds = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json')
+    json.dump(creds_json, temp_creds)
+    temp_creds.close()
+    
+    firebase_cred_path = temp_creds.name
+    print(f"✅ Firebase credentials loaded to: {firebase_cred_path}")
+else:
+    # Running locally - use file path
+    firebase_cred_path = os.path.join(os.path.dirname(__file__), "firebase-credentials.json")
+    print(f"🔧 Using local Firebase credentials: {firebase_cred_path}")
+
 app = Flask(__name__)
 CORS(app, origins="*")  # Allow Flutter to connect
 
@@ -39,7 +60,7 @@ CORS(app, origins="*")  # Allow Flutter to connect
 socketio = SocketIO(
     app, 
     cors_allowed_origins="*",  # Allow all origins (restrict in production!)
-    async_mode='threading',
+    async_mode='gevent',
     logger=True,
     engineio_logger=True
 )
