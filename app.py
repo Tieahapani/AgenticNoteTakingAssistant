@@ -60,7 +60,7 @@ CORS(app, origins="*")  # Allow Flutter to connect
 socketio = SocketIO(
     app, 
     cors_allowed_origins="*",  # Allow all origins (restrict in production!)
-    async_mode='gevent',
+    async_mode='eventlet',
     logger=True,
     engineio_logger=True
 )
