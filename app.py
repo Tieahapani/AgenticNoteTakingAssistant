@@ -1,12 +1,10 @@
 # app.py - Complete with WebSocket and Firebase Authentication
-import sys
+
 import os
 
 # Add the project root to the Python path
 # This allows for absolute imports from the 'backend' directory
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+
 
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -15,21 +13,21 @@ import os
 import threading
 import json 
 import tempfile 
-import sys
+
 import asyncio
 import time
-from backend.utils.timing import LatencyTracker
+from utils.timing import LatencyTracker
 from datetime import datetime
 from datetime import timezone 
 from auth import verify_token, get_current_user_id
 from dotenv import load_dotenv
-from backend.utils.firebase_client import FirebaseClient
-from backend.utils.user_profile import get_user_profile 
+from utils.firebase_client import FirebaseClient
+from utils.user_profile import get_user_profile 
 # Try relative import if running as a script, or adjust sys.path if needed
 
-from backend.agents.voicelog_graph import voicelog_app, _postgres_store
-from backend.agents.monitor_agent import MonitorAgent
-from backend.agents.cleanup_agents import CleanupAgent
+from agents.voicelog_graph import voicelog_app, _postgres_store
+from agents.monitor_agent import MonitorAgent
+from agents.cleanup_agents import CleanupAgent
 from firebase_admin import auth as firebase_auth
 
 load_dotenv()
