@@ -23,12 +23,22 @@ class CleanupAgent:
         """Initialize Firebase connection"""
         if not firebase_admin._apps:
             if firebase_cred_path is None:
+                # Try environment variable first, fallback to file
+                if os.getenv('FIREBASE_CREDENTIALS_JSON'):
+                    import json
+                    import tempfile
+                    creds_json = json.loads(os.getenv('FIREBASE_CREDENTIALS_JSON'))
+                temp_creds = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json')
+                json.dump(creds_json, temp_creds)
+                temp_creds.close()
+                firebase_cred_path = temp_creds.name
+            else:
                 firebase_cred_path = os.path.join(
                     os.path.dirname(os.path.dirname(__file__)),
                     "firebase-credentials.json"
                 )
-            cred = credentials.Certificate(firebase_cred_path)
-            firebase_admin.initialize_app(cred)
+        cred = credentials.Certificate(firebase_cred_path)
+        firebase_admin.initialize_app(cred)
         
         self.db = firestore.client()
         self.log("✅ Cleanup Agent initialized")
