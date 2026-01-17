@@ -3,10 +3,10 @@ flask-socketio==5.3.6
 flask-cors==4.0.0
 python-socketio==5.10.0
 firebase-admin==6.3.0
-langchain>=0.3.0
-langchain-openai>=0.2.0
-langchain-core>=0.3.0
-langgraph>=0.2.50
+langchain==1.2.4
+langchain-openai==1.1.7
+langchain-core==1.2.7
+langgraph==1.0.6
 openai>=1.54.0
 python-dotenv==1.0.0
 psycopg2-binary==2.9.9
