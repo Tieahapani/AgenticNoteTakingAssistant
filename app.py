@@ -83,51 +83,11 @@ user_profile = get_user_profile()
 @socketio.on('connect')
 def handle_connect():
     """Client connects to WebSocket - verify authentication"""
-    auth_header = request.headers.get('Authorization')
-    
-    if not auth_header:
-        print("❌ WebSocket connection rejected: No token")
-        emit('error', {'message': 'Connection rejected by server'})
-        return False  # Reject connection
-    
-    try:
-        # Verify Firebase token
-        if not auth_header.startswith('Bearer '):
-            print("❌ WebSocket connection rejected: Invalid auth format")
-            emit('error', {'message': 'Connection rejected by server'})
-            return False
-            
-        token = auth_header.split('Bearer ')[1]
-        
+    print(f"Client connecting: {request.sid}")
 
-       
-        decoded_token = firebase_auth.verify_id_token(token)
-          
-        user_id = decoded_token['uid']
-
-        print(f"\n{'='*60}")
-        print(f"🔌 NEW AUTHENTICATED CONNECTION")
-        print(f"   User ID: {user_id}")
-        print(f"   Client SID: {request.sid}")
-        print(f"   Time: {datetime.now().strftime('%H:%M:%S')}")
-        print(f"{'='*60}\n")
+    return True 
         
-        emit('connection_response', {
-            'status': 'connected',
-            'user_id': user_id,
-            'sid': request.sid,
-            'message': 'Connected to VoiceLog Monitor Service',
-            'timestamp': datetime.now().isoformat()
-        })
-
-        return True 
-        
-    except Exception as e:
-        print(f"❌ WebSocket auth failed: {e}")
-        import traceback 
-        traceback.print_exc()
-        emit('error', {'message': 'Connection rejected by server'})
-        return False  # Reject connection
+  
 
 
 @socketio.on('disconnect')
@@ -142,7 +102,7 @@ def handle_disconnect():
 
 @socketio.on('register_user')
 def handle_register(data):
-    """User registers to receive insights - verify token"""
+    """User registers to receive insights - verify token HERE"""
     auth_header = request.headers.get('Authorization')
     
     if not auth_header:
@@ -150,9 +110,17 @@ def handle_register(data):
         return
     
     try:
-        # Verify token and extract user_id
         token = auth_header.split('Bearer ')[1]
-        decoded_token = firebase_auth.verify_id_token(token)
+        
+        # Verify with timeout
+        import eventlet
+        with eventlet.Timeout(10, False):
+            decoded_token = firebase_auth.verify_id_token(token)
+        
+        if not decoded_token:
+            emit('error', {'message': 'Token verification failed'})
+            return
+            
         user_id = decoded_token['uid']
         
         # Join user-specific room
