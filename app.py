@@ -93,9 +93,21 @@ def handle_connect():
             return False
             
         token = auth_header.split('Bearer ')[1]
-        decoded_token = firebase_auth.verify_id_token(token)
-        user_id = decoded_token['uid']
+        import signal 
+
+        def timeout_handler(signum, frame): 
+            raise TimeoutError("Token verification timeout")
         
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(5)
+        try: 
+           decoded_token = firebase_auth.verify_id_token(token)
+           signal.alarm(0)
+        except TimeoutError: 
+           print("❌ Token verification timeout")
+           return False  # Reject connection
+        user_id = decoded_token['uid']
+
         print(f"\n{'='*60}")
         print(f"🔌 NEW AUTHENTICATED CONNECTION")
         print(f"   User ID: {user_id}")
@@ -110,9 +122,13 @@ def handle_connect():
             'message': 'Connected to VoiceLog Monitor Service',
             'timestamp': datetime.now().isoformat()
         })
+
+        return True 
         
     except Exception as e:
         print(f"❌ WebSocket auth failed: {e}")
+        import traceback 
+        traceback.print_exc()
         return False  # Reject connection
 
 
@@ -681,7 +697,7 @@ def health():
         },
         "websocket": {
             "enabled": True,
-            "url": "ws://localhost:5002"
+            "url": "ws://agenticnotetakingassistant-2.onrender.com"
         }
     })
 
