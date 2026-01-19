@@ -1,5 +1,7 @@
 # app.py - Complete with WebSocket and Firebase Authentication
 
+import eventlet 
+eventlet.monkey_patch()
 import os
 
 # Add the project root to the Python path
@@ -84,28 +86,22 @@ def handle_connect():
     
     if not auth_header:
         print("❌ WebSocket connection rejected: No token")
+        emit('error', {'message': 'Connection rejected by server'})
         return False  # Reject connection
     
     try:
         # Verify Firebase token
         if not auth_header.startswith('Bearer '):
             print("❌ WebSocket connection rejected: Invalid auth format")
+            emit('error', {'message': 'Connection rejected by server'})
             return False
             
         token = auth_header.split('Bearer ')[1]
-        import signal 
-
-        def timeout_handler(signum, frame): 
-            raise TimeoutError("Token verification timeout")
         
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(5)
-        try: 
-           decoded_token = firebase_auth.verify_id_token(token)
-           signal.alarm(0)
-        except TimeoutError: 
-           print("❌ Token verification timeout")
-           return False  # Reject connection
+
+       
+        decoded_token = firebase_auth.verify_id_token(token)
+          
         user_id = decoded_token['uid']
 
         print(f"\n{'='*60}")
@@ -129,6 +125,7 @@ def handle_connect():
         print(f"❌ WebSocket auth failed: {e}")
         import traceback 
         traceback.print_exc()
+        emit('error', {'message': 'Connection rejected by server'})
         return False  # Reject connection
 
 
