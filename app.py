@@ -110,10 +110,11 @@ def handle_register(data):
     try:
         token = auth_header.split('Bearer ')[1]
 
-        # Use eventlet.tpool to avoid blocking the main loop
-        import eventlet.tpool
+        # Use gevent threadpool to avoid blocking the main loop
+        from gevent import threadpool
         try:
-            decoded_token = eventlet.tpool.execute(firebase_auth.verify_id_token, token)
+            pool = threadpool.ThreadPool(maxsize=10)
+            decoded_token = pool.spawn(firebase_auth.verify_id_token, token).get()
         except Exception as verify_error:
             print(f"❌ Token verification error: {verify_error}")
             emit('error', {'message': 'Token verification failed'})
@@ -165,9 +166,10 @@ def handle_unregister():
     try:
         token = auth_header.split('Bearer ')[1]
 
-        # Use eventlet.tpool to avoid blocking
-        import eventlet.tpool
-        decoded_token = eventlet.tpool.execute(firebase_auth.verify_id_token, token)
+        # Use gevent threadpool to avoid blocking
+        from gevent.threadpool import ThreadPool
+        pool = ThreadPool(maxsize=10)
+        decoded_token = pool.spawn(firebase_auth.verify_id_token, token).get()
         user_id = decoded_token['uid']
 
         leave_room(user_id)
@@ -219,10 +221,10 @@ class MonitorService:
         if self.running:
             print("⚠️  Monitor already running")
             return
-        
+
         self.running = True
-        import eventlet 
-        eventlet.spawn(self._monitor_loop)
+        import gevent
+        gevent.spawn(self._monitor_loop)
         
         print(f"\n{'='*60}")
         print(f"🤖 MONITOR SERVICE STARTED")
@@ -243,21 +245,23 @@ class MonitorService:
     
     def _monitor_loop(self):
         """Main monitoring loop - runs in background greenthread"""
-        import eventlet
+        import gevent
+        from gevent.threadpool import ThreadPool
 
         while self.running:
             try:
                 if len(self.monitored_users) == 0:
-                    eventlet.sleep(10)
+                    gevent.sleep(10)
                     continue
 
                 # Process users one at a time with yields
                 for user_id in self.monitored_users:
                     try:
                         # Run blocking operations in thread pool
-                        eventlet.tpool.execute(self._check_user_sync, user_id)
+                        pool = ThreadPool(maxsize=10)
+                        pool.spawn(self._check_user_sync, user_id).get()
                         # Yield control between users
-                        eventlet.sleep(0.1)
+                        gevent.sleep(0.1)
                     except Exception as user_error:
                         print(f"❌ Error checking user {user_id}: {user_error}")
 
@@ -270,13 +274,13 @@ class MonitorService:
                 for _ in range(self.check_interval):
                     if not self.running:
                         break
-                    eventlet.sleep(1)
+                    gevent.sleep(1)
 
             except Exception as e:
                 print(f"❌ Monitor loop error: {e}")
                 import traceback
                 traceback.print_exc()
-                eventlet.sleep(30) 
+                gevent.sleep(30) 
                 
                 
     
@@ -668,8 +672,9 @@ def trigger_monitor():
         user_id = request.user_id  # From verified token
 
         # Run in thread pool to avoid blocking
-        import eventlet.tpool
-        eventlet.tpool.execute(monitor_service._check_user_sync, user_id)
+        from gevent import threadpool
+        pool = threadpool.ThreadPool(maxsize=10)
+        pool.spawn(monitor_service._check_user_sync, user_id)
 
         return jsonify({
             "success": True,
@@ -689,7 +694,7 @@ def health():
     global _monitor_started
     return jsonify({
         "status": "healthy",
-        "server": "gunicorn+eventlet",
+        "server": "gunicorn+gevent",
         "langgraph_initialized": voicelog_app is not None,
         "firebase_connected": firebase_client.db is not None,
         "firebase_auth_enabled": True,

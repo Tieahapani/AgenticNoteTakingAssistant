@@ -39,13 +39,13 @@ def verify_token(f):
     def decorated_function(*args, **kwargs):
         # Get Authorization header
         auth_header = request.headers.get('Authorization')
-        
+
         if not auth_header:
             return jsonify({
                 'success': False,
                 'error': 'No authorization token provided'
             }), 401
-        
+
         try:
             # Extract token (format: "Bearer <token>")
             if not auth_header.startswith('Bearer '):
@@ -53,33 +53,41 @@ def verify_token(f):
                     'success': False,
                     'error': 'Invalid authorization format. Use: Bearer <token>'
                 }), 401
-            
+
             token = auth_header.split('Bearer ')[1]
-            
-            # Verify token with Firebase
-            decoded_token = auth.verify_id_token(token)
-            
+
+            # Verify token with Firebase using thread pool for gevent compatibility
+            try:
+                import gevent
+                from gevent.threadpool import ThreadPool
+                pool = ThreadPool(maxsize=10)
+                decoded_token = pool.spawn(auth.verify_id_token, token).get()
+            except ImportError:
+                # Fallback if gevent not available (local development)
+                decoded_token = auth.verify_id_token(token)
+
             # Extract user ID from verified token
             user_id = decoded_token['uid']
-            
+
             # Add user_id to request for route handlers to use
             request.user_id = user_id
-            
+
             print(f"✅ Authenticated user: {user_id}")
-            
+
             return f(*args, **kwargs)
-            
+
         except auth.InvalidIdTokenError:
             return jsonify({
                 'success': False,
                 'error': 'Invalid or expired token'
             }), 401
         except Exception as e:
+            print(f"❌ Authentication error: {str(e)}")
             return jsonify({
                 'success': False,
                 'error': f'Authentication failed: {str(e)}'
             }), 401
-    
+
     return decorated_function
 
 
