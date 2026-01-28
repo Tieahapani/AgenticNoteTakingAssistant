@@ -55,11 +55,14 @@ CORS(app, origins="*")  # Allow Flutter to connect
 
 # Initialize SocketIO
 socketio = SocketIO(
-    app, 
+    app,
     cors_allowed_origins="*",  # Allow all origins (restrict in production!)
     async_mode='eventlet',
     logger=True,
-    engineio_logger=True
+    engineio_logger=True,
+    ping_timeout=60,  # Increase ping timeout for slow connections
+    ping_interval=25,  # Send ping every 25 seconds
+    cors_credentials=True
 )
 
 print(f"App Startup - Store available: {_postgres_store is not None}")
@@ -781,7 +784,9 @@ def all_tasks():
 # START SERVER
 # ============================================
 
-# Monitor service now starts lazily on first request (see process_command)
+# Connect SocketIO to monitor service immediately (for WebSocket availability)
+# Monitor loop starts lazily on first request to reduce startup load
+monitor_service.set_socketio(socketio)
 
 if __name__ == "__main__":
     FLASK_PORT = 5002
