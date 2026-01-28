@@ -13,16 +13,12 @@ from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_cors import CORS
 import os
-import threading
-import json 
-import tempfile 
+import json
+import tempfile
 
-import asyncio
-import time
 from utils.timing import LatencyTracker
 from datetime import datetime
-from datetime import timezone 
-from auth import verify_token, get_current_user_id
+from auth import verify_token
 from dotenv import load_dotenv
 from utils.firebase_client import FirebaseClient
 from utils.user_profile import get_user_profile 
@@ -101,78 +97,85 @@ def handle_disconnect():
 
 
 @socketio.on('register_user')
-def handle_register(data):
+def handle_register():
     """User registers to receive insights - verify token HERE"""
     auth_header = request.headers.get('Authorization')
-    
+
     if not auth_header:
         emit('error', {'message': 'Not authenticated'})
         return
-    
+
     try:
         token = auth_header.split('Bearer ')[1]
-        
-        # Verify with timeout
-        import eventlet
-        with eventlet.Timeout(10, False):
-            decoded_token = firebase_auth.verify_id_token(token)
-        
+
+        # Use eventlet.tpool to avoid blocking the main loop
+        import eventlet.tpool
+        try:
+            decoded_token = eventlet.tpool.execute(firebase_auth.verify_id_token, token)
+        except Exception as verify_error:
+            print(f"❌ Token verification error: {verify_error}")
+            emit('error', {'message': 'Token verification failed'})
+            return
+
         if not decoded_token:
             emit('error', {'message': 'Token verification failed'})
             return
-            
+
         user_id = decoded_token['uid']
-        
+
         # Join user-specific room
         join_room(user_id)
-        
+
         # Add to monitoring
         monitor_service.add_user(user_id)
-        
+
         print(f"\n{'='*60}")
         print(f"👤 USER REGISTERED")
         print(f"   User ID: {user_id}")
         print(f"   Room: {user_id}")
         print(f"   SID: {request.sid}")
         print(f"{'='*60}\n")
-        
+
         emit('registered', {
             'user_id': user_id,
             'status': 'registered',
             'message': 'You will receive Monitor insights in real-time',
             'room': user_id
         })
-        
+
     except Exception as e:
         print(f"❌ Registration failed: {e}")
         emit('error', {'message': 'Authentication failed'})
 
 
 @socketio.on('unregister_user')
-def handle_unregister(data):
+def handle_unregister():
     """User unregisters - verify token"""
     auth_header = request.headers.get('Authorization')
-    
+
     if not auth_header:
         return
-    
+
     try:
         token = auth_header.split('Bearer ')[1]
-        decoded_token = firebase_auth.verify_id_token(token)
+
+        # Use eventlet.tpool to avoid blocking
+        import eventlet.tpool
+        decoded_token = eventlet.tpool.execute(firebase_auth.verify_id_token, token)
         user_id = decoded_token['uid']
-        
+
         leave_room(user_id)
-        
+
         print(f"\n{'='*60}")
         print(f"👤 USER UNREGISTERED")
         print(f"   User ID: {user_id}")
         print(f"{'='*60}\n")
-        
+
         emit('unregistered', {
             'user_id': user_id,
             'status': 'unregistered'
         })
-        
+
     except Exception as e:
         print(f"❌ Unregistration failed: {e}")
 
@@ -212,8 +215,8 @@ class MonitorService:
             return
         
         self.running = True
-        thread = threading.Thread(target=self._monitor_loop, daemon=True)
-        thread.start()
+        import eventlet 
+        eventlet.spawn(self._monitor_loop)
         
         print(f"\n{'='*60}")
         print(f"🤖 MONITOR SERVICE STARTED")
@@ -233,64 +236,84 @@ class MonitorService:
             print(f"👤 Added {user_id} to monitoring list")
     
     def _monitor_loop(self):
-        """Main monitoring loop - runs in background thread"""
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
+        """Main monitoring loop - runs in background greenthread"""
+        import eventlet
+
         while self.running:
             try:
                 if len(self.monitored_users) == 0:
-                    print(f"⏸️  No users to monitor. Waiting {self.check_interval}s...\n")
-                    time.sleep(self.check_interval)
+                    eventlet.sleep(10)
                     continue
-                
-                for user_id in self.monitored_users:
-                    loop.run_until_complete(self._check_user(user_id))
 
-                self._check_cleanup_schedule()    
-                
-                print(f"⏸️  Waiting {self.check_interval}s before next check...\n")
-                time.sleep(self.check_interval)
-                
+                # Process users one at a time with yields
+                for user_id in self.monitored_users:
+                    try:
+                        # Run blocking operations in thread pool
+                        eventlet.tpool.execute(self._check_user_sync, user_id)
+                        # Yield control between users
+                        eventlet.sleep(0.1)
+                    except Exception as user_error:
+                        print(f"❌ Error checking user {user_id}: {user_error}")
+
+                # Check cleanup schedule
+                self._check_cleanup_schedule()
+
+                print(f"⏸️  Monitor check done. Sleeping {self.check_interval}s...\n")
+
+                # Sleep in chunks to allow graceful shutdown
+                for _ in range(self.check_interval):
+                    if not self.running:
+                        break
+                    eventlet.sleep(1)
+
             except Exception as e:
                 print(f"❌ Monitor loop error: {e}")
                 import traceback
                 traceback.print_exc()
-                time.sleep(self.check_interval)
+                eventlet.sleep(30) 
+                
+                
     
-    async def _check_user(self, user_id):
-        """Check user behavior and push insights via WebSocket"""
-        
+    def _check_user_sync(self, user_id):
+        """Check user behavior synchronously (for thread pool execution)"""
+
         timestamp = datetime.now().strftime('%H:%M:%S')
         print(f"{'='*60}")
         print(f"[{timestamp}] 🔍 MONITOR CHECKING: {user_id}")
         print(f"{'='*60}")
-        
+
         try:
             # Get Firebase credentials path
-            firebase_cred_path = os.path.join(
-                os.path.dirname(__file__),
-                "firebase-credentials.json"
-            )
-            
+            if os.getenv('FIREBASE_CREDENTIALS_JSON'):
+                # Use the temp file created at startup
+                firebase_cred_path = os.path.join(
+                    os.path.dirname(__file__),
+                    "firebase-credentials.json"
+                )
+            else:
+                firebase_cred_path = os.path.join(
+                    os.path.dirname(__file__),
+                    "firebase-credentials.json"
+                )
+
             # Create MonitorAgent and run with socketio + user_id
             user_timezone = user_profile.get_timezone(user_id)
             monitor = MonitorAgent(firebase_cred_path=firebase_cred_path)
-        
+
             monitor.run(
-                user_timezone=user_timezone,   # TODO: Get from user profile
+                user_timezone=user_timezone,
                 socketio=self.socketio,
                 user_id=user_id
             )
-            
+
             print(f"✅ Monitor completed for {user_id}")
             print(f"💾 Insights saved & notifications sent")
-        
+
         except Exception as e:
             print(f"❌ Error checking user {user_id}: {e}")
             import traceback
             traceback.print_exc()
-        
+
         print(f"{'='*60}\n")
 
     def _check_cleanup_schedule(self): 
@@ -334,8 +357,9 @@ class MonitorService:
             traceback.print_exc()
 
 
-# Initialize Monitor Service
+# Initialize Monitor Service (but don't start yet - lazy initialization)
 monitor_service = MonitorService(check_interval=1800)  # 30 minutes
+_monitor_started = False
 
 
 # ============================================
@@ -530,6 +554,14 @@ def api_toggle_task():
 @verify_token  # Verify Firebase token
 def process_command():
     """Main entry point - uses LangGraph workflow"""
+    global _monitor_started
+
+    # Lazy start monitor service on first request
+    if not _monitor_started:
+        monitor_service.set_socketio(socketio)
+        monitor_service.start()
+        _monitor_started = True
+
     data = request.json
     user_command = data.get('command', '')
     user_id = request.user_id  # Get from verified token, not from request body
@@ -628,11 +660,11 @@ def trigger_monitor():
     """Manually trigger Monitor Agent"""
     try:
         user_id = request.user_id  # From verified token
-        
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(monitor_service._check_user(user_id))
-        
+
+        # Run in thread pool to avoid blocking
+        import eventlet.tpool
+        eventlet.tpool.execute(monitor_service._check_user_sync, user_id)
+
         return jsonify({
             "success": True,
             "message": f"Monitor triggered for {user_id}"
@@ -648,18 +680,23 @@ def trigger_monitor():
 @app.route("/health")
 def health():
     """Health check endpoint"""
+    global _monitor_started
     return jsonify({
         "status": "healthy",
+        "server": "gunicorn+eventlet",
         "langgraph_initialized": voicelog_app is not None,
         "firebase_connected": firebase_client.db is not None,
         "firebase_auth_enabled": True,
-        "checkpointer": "SQLite (voicelog_memory.db)", 
+        "checkpointer": "SQLite (voicelog_memory.db)",
         "store": "PostgresStore (user preferences)",
         "monitor_service": {
+            "initialized": True,
             "running": monitor_service.running,
+            "started": _monitor_started,
             "interval": monitor_service.check_interval,
             "users": len(monitor_service.monitored_users),
-            "websocket": monitor_service.socketio is not None
+            "websocket": monitor_service.socketio is not None,
+            "startup_mode": "lazy (starts on first request)"
         },
         "websocket": {
             "enabled": True,
@@ -744,6 +781,8 @@ def all_tasks():
 # START SERVER
 # ============================================
 
+# Monitor service now starts lazily on first request (see process_command)
+
 if __name__ == "__main__":
     FLASK_PORT = 5002
     
@@ -765,10 +804,7 @@ if __name__ == "__main__":
     print(f"{'='*60}\n")
     
     # Connect SocketIO to Monitor Service
-    monitor_service.set_socketio(socketio)
     
-    # Start Monitor Service
-    monitor_service.start()
     
     try:
         # Use socketio.run instead of app.run
