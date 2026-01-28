@@ -1,7 +1,6 @@
 # app.py - Complete with WebSocket and Firebase Authentication
 
-import eventlet 
-eventlet.monkey_patch()
+
 
 import os
 
@@ -57,7 +56,7 @@ CORS(app, origins="*")  # Allow Flutter to connect
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",  # Allow all origins (restrict in production!)
-    async_mode='eventlet',
+    async_mode='gevent',
     logger=True,
     engineio_logger=True,
     ping_timeout=60,  # Increase ping timeout for slow connections

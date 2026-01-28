@@ -14,6 +14,8 @@ psycopg-pool>=3.2.0
 python-dateutil==2.8.2
 pytz==2024.1
 gunicorn==21.2.0
-eventlet>=0.37.0 
+eventlet==0.36.1
+gevent>=24.2.1
+gevent-websocket>=0.10.1
 langgraph-checkpoint-sqlite==3.0.1 
 langgraph-checkpoint-postgres==3.0.2
