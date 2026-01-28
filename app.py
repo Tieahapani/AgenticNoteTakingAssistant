@@ -99,7 +99,7 @@ def handle_disconnect():
 
 
 @socketio.on('register_user')
-def handle_register():
+def handle_register(data):
     """User registers to receive insights - verify token HERE"""
     auth_header = request.headers.get('Authorization')
 
@@ -123,7 +123,11 @@ def handle_register():
             emit('error', {'message': 'Token verification failed'})
             return
 
-        user_id = decoded_token['uid']
+        user_id = data['user_id']
+
+        if decoded_token['uid'] != user_id:
+            emit('error', {'message': 'Token does not match user ID'})
+            return
 
         # Join user-specific room
         join_room(user_id)
