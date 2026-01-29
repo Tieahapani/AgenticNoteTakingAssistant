@@ -1,6 +1,10 @@
 # app.py - Complete with WebSocket and Firebase Authentication
 
+import sys
+sys.setrecursionlimit(5000)
 
+import gevent.monkey 
+gevent.monkey.patch_all(ssl=False)
 
 import os
 
@@ -11,7 +15,6 @@ import os
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_cors import CORS
-import os
 import json
 import tempfile
 
