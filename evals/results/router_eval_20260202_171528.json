@@ -1,0 +1,298 @@
+{
+  "timestamp": "2026-02-02T17:15:28.343695",
+  "test_set": "small",
+  "total_tests": 36,
+  "passed": 36,
+  "failed": 0,
+  "accuracy": 1.0,
+  "results": [
+    {
+      "test_id": "RT001",
+      "input": "Add buy groceries to my list",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Creating a new task"
+    },
+    {
+      "test_id": "RT002",
+      "input": "Remind me to call mom tomorrow at 5pm",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Creating task with specific time"
+    },
+    {
+      "test_id": "RT003",
+      "input": "I need to finish the project proposal by Friday",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Creating task with deadline"
+    },
+    {
+      "test_id": "RT004",
+      "input": "Create a folder called Work Projects",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Creating a folder"
+    },
+    {
+      "test_id": "RT005",
+      "input": "I'm done with my workout",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Marking task complete"
+    },
+    {
+      "test_id": "RT006",
+      "input": "Mark the grocery task as complete",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Explicit complete action"
+    },
+    {
+      "test_id": "RT007",
+      "input": "I finished reading the book",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Implicit task completion"
+    },
+    {
+      "test_id": "RT008",
+      "input": "Delete the dentist appointment",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Deleting a task"
+    },
+    {
+      "test_id": "RT009",
+      "input": "Move the grocery task to Shopping folder",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Moving task between folders"
+    },
+    {
+      "test_id": "RT010",
+      "input": "Change the project deadline to next Monday",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Editing task details"
+    },
+    {
+      "test_id": "RT011",
+      "input": "Make this task high priority",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Changing priority"
+    },
+    {
+      "test_id": "RT012",
+      "input": "What do I need to do today?",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Listing current tasks"
+    },
+    {
+      "test_id": "RT013",
+      "input": "Show me my tasks",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Viewing task list"
+    },
+    {
+      "test_id": "RT014",
+      "input": "What's in my Work folder?",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Viewing folder contents"
+    },
+    {
+      "test_id": "RT015",
+      "input": "List all my folders",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Viewing organizational structure"
+    },
+    {
+      "test_id": "RT016",
+      "input": "Delete it",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Cleanup action - delete"
+    },
+    {
+      "test_id": "RT017",
+      "input": "Complete it",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Cleanup action - complete"
+    },
+    {
+      "test_id": "RT018",
+      "input": "Keep it",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Cleanup action - keep"
+    },
+    {
+      "test_id": "RT019",
+      "input": "How's my week going?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Progress review - pattern seeking"
+    },
+    {
+      "test_id": "RT020",
+      "input": "When do I usually complete tasks?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Asking about behavioral patterns"
+    },
+    {
+      "test_id": "RT021",
+      "input": "What time am I most productive?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Productivity pattern analysis"
+    },
+    {
+      "test_id": "RT022",
+      "input": "Did I get anything done today?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Historical completion review"
+    },
+    {
+      "test_id": "RT023",
+      "input": "What did I accomplish this week?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Achievement history"
+    },
+    {
+      "test_id": "RT024",
+      "input": "Which tasks did I complete yesterday?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Past completions query"
+    },
+    {
+      "test_id": "RT025",
+      "input": "Show me what I finished last month",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Historical completion data"
+    },
+    {
+      "test_id": "RT026",
+      "input": "Am I behind on stuff?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Procrastination check"
+    },
+    {
+      "test_id": "RT027",
+      "input": "What am I avoiding?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Procrastination analysis"
+    },
+    {
+      "test_id": "RT028",
+      "input": "How am I doing with my goals?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Performance accountability"
+    },
+    {
+      "test_id": "RT029",
+      "input": "Which folder am I working on most?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Focus pattern analysis"
+    },
+    {
+      "test_id": "RT030",
+      "input": "What types of tasks do I complete fastest?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Category performance analysis"
+    },
+    {
+      "test_id": "RT031",
+      "input": "What about the project?",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Vague - likely asking about current state"
+    },
+    {
+      "test_id": "RT032",
+      "input": "Tell me about my tasks",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Likely wants to see current list"
+    },
+    {
+      "test_id": "RT033",
+      "input": "How many tasks do I have?",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Current count, not historical"
+    },
+    {
+      "test_id": "RT034",
+      "input": "What have I been working on?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Past tense - historical pattern"
+    },
+    {
+      "test_id": "RT035",
+      "input": "What am I working on?",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Present tense - current state"
+    },
+    {
+      "test_id": "RT036",
+      "input": "What should I work on?",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Future/current - task list"
+    }
+  ]
+}

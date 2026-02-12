@@ -1,0 +1,186 @@
+{
+  "timestamp": "2026-02-02T18:07:52.557447",
+  "total_tests": 11,
+  "passed": 8,
+  "failed": 3,
+  "average_score": 0.7727272727272727,
+  "results": [
+    {
+      "test_id": "MEM001",
+      "input": "I always workout in the morning before 8 am",
+      "expected_extract": true,
+      "actual_extracted": true,
+      "expected_count": 1,
+      "actual_count": 1,
+      "actual_memories": [
+        {
+          "pref": "User always works out in the morning before 8 am",
+          "confidence": "high",
+          "source": "explicit statement"
+        }
+      ],
+      "matched": false,
+      "score": 0.0,
+      "details": "Matched 0/1 expected preferences",
+      "reasoning": "clear routine/habit statement"
+    },
+    {
+      "test_id": "MEM002",
+      "input": "All my AI-related tasks should go in the Problems folder",
+      "expected_extract": true,
+      "actual_extracted": true,
+      "expected_count": 1,
+      "actual_count": 1,
+      "actual_memories": [
+        {
+          "pref": "User organizes AI-related tasks in the Problems folder",
+          "confidence": "high",
+          "source": "explicit statement"
+        }
+      ],
+      "matched": false,
+      "score": 0.0,
+      "details": "Matched 0/1 expected preferences",
+      "reasoning": "Explicit folder routing rule"
+    },
+    {
+      "test_id": "MEM003",
+      "input": "I'm a software engineer at Google working on ML infrastructure",
+      "expected_extract": true,
+      "actual_extracted": true,
+      "expected_count": 1,
+      "actual_count": 2,
+      "actual_memories": [
+        {
+          "pref": "User is a software engineer at Google",
+          "confidence": "high",
+          "source": "explicit statement"
+        },
+        {
+          "pref": "User works on ML infrastructure",
+          "confidence": "high",
+          "source": "explicit statement"
+        }
+      ],
+      "matched": true,
+      "score": 1.0,
+      "details": "Matched 1/1 expected preferences",
+      "reasoning": "Personal/professional information"
+    },
+    {
+      "test_id": "MEM004",
+      "input": "I live in San Francisco and work from home on Fridays",
+      "expected_extract": true,
+      "actual_extracted": true,
+      "expected_count": 2,
+      "actual_count": 2,
+      "actual_memories": [
+        {
+          "pref": "User lives in San Francisco",
+          "confidence": "high",
+          "source": "explicit statement"
+        },
+        {
+          "pref": "User works from home on Fridays",
+          "confidence": "high",
+          "source": "explicit statement"
+        }
+      ],
+      "matched": false,
+      "score": 0.5,
+      "details": "Matched 1/2 expected preferences",
+      "reasoning": "Location + routine information"
+    },
+    {
+      "test_id": "MEM005",
+      "input": "Add buy groceries to my tasks",
+      "expected_extract": false,
+      "actual_extracted": false,
+      "expected_count": 0,
+      "actual_count": 0,
+      "actual_memories": [],
+      "matched": true,
+      "score": 1.0,
+      "details": "Correctly extracted nothing",
+      "reasoning": "One-time task creation command"
+    },
+    {
+      "test_id": "MEM006",
+      "input": "Delete the dentist appointment",
+      "expected_extract": false,
+      "actual_extracted": false,
+      "expected_count": 0,
+      "actual_count": 0,
+      "actual_memories": [],
+      "matched": true,
+      "score": 1.0,
+      "details": "Correctly extracted nothing",
+      "reasoning": "One-time action on specific task"
+    },
+    {
+      "test_id": "MEM007",
+      "input": "How am I doing this week?",
+      "expected_extract": false,
+      "actual_extracted": false,
+      "expected_count": 0,
+      "actual_count": 0,
+      "actual_memories": [],
+      "matched": true,
+      "score": 1.0,
+      "details": "Correctly extracted nothing",
+      "reasoning": "Analysis/insight request"
+    },
+    {
+      "test_id": "MEM008",
+      "input": "What tasks do I have today?",
+      "expected_extract": false,
+      "actual_extracted": false,
+      "expected_count": 0,
+      "actual_count": 0,
+      "actual_memories": [],
+      "matched": true,
+      "score": 1.0,
+      "details": "Correctly extracted nothing",
+      "reasoning": "Query about current state"
+    },
+    {
+      "test_id": "MEM009",
+      "input": "Remind me to call mom on Sunday",
+      "expected_extract": false,
+      "actual_extracted": false,
+      "expected_count": 0,
+      "actual_count": 0,
+      "actual_memories": [],
+      "matched": true,
+      "score": 1.0,
+      "details": "Correctly extracted nothing",
+      "reasoning": "It is a one-time reminder setup"
+    },
+    {
+      "test_id": "MEM010",
+      "input": "Schedule a meeting with the team for next Monday",
+      "expected_extract": false,
+      "actual_extracted": false,
+      "expected_count": 0,
+      "actual_count": 0,
+      "actual_memories": [],
+      "matched": true,
+      "score": 1.0,
+      "details": "Correctly extracted nothing",
+      "reasoning": "A reminder schedule again"
+    },
+    {
+      "test_id": "MEMO11",
+      "input": "I think I have a problem with schedule, can you shift my meetings around?",
+      "expected_extract": false,
+      "actual_extracted": false,
+      "expected_count": 0,
+      "actual_count": 0,
+      "actual_memories": [],
+      "matched": true,
+      "score": 1.0,
+      "details": "Correctly extracted nothing",
+      "reasoning": "It is a request for assistance"
+    }
+  ]
+}

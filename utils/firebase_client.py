@@ -20,25 +20,75 @@ class FirebaseClient:
     def _initialize(self):
         """Initialize Firebase"""
         import tempfile
-        
-        if os.getenv('FIREBASE_CREDENTIALS_JSON'):
-            # Running on Render - credentials in environment variable
-            cred_dict = json.loads(os.getenv('FIREBASE_CREDENTIALS_JSON'))
-            
-            # Create temporary file
-            temp_creds = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json')
-            json.dump(cred_dict, temp_creds)
-            temp_creds.close()
-            
-            cred = credentials.Certificate(temp_creds.name)
-        else:
-            # Running locally - use file path
-            cred = credentials.Certificate("firebase-credentials.json")
-        
-        if not firebase_admin._apps:
-            firebase_admin.initialize_app(cred)
-        
-        self.db = firestore.client()
+
+        print(f"\n{'='*80}")
+        print(f"🔧 INITIALIZING FIREBASE CLIENT")
+        print(f"{'='*80}")
+
+        try:
+            if os.getenv('FIREBASE_CREDENTIALS_JSON'):
+                # Running on Render - credentials in environment variable
+                print(f"   🌐 Running on Render - using environment credentials")
+                cred_dict = json.loads(os.getenv('FIREBASE_CREDENTIALS_JSON'))
+                print(f"   📊 Project ID from env: {cred_dict.get('project_id')}")
+
+                # Create temporary file
+                temp_creds = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json')
+                json.dump(cred_dict, temp_creds)
+                temp_creds.close()
+
+                cred = credentials.Certificate(temp_creds.name)
+            else:
+                # Running locally - use file path
+                print(f"   💻 Running locally - using firebase-credentials.json")
+                cred_path = "firebase-credentials.json"
+
+                if not os.path.exists(cred_path):
+                    error_msg = f"❌ Credentials file not found: {cred_path}"
+                    print(error_msg)
+                    raise FileNotFoundError(error_msg)
+
+                print(f"   📄 Loading credentials from: {cred_path}")
+                cred = credentials.Certificate(cred_path)
+
+                # Read project ID from credentials
+                with open(cred_path, 'r') as f:
+                    cred_data = json.load(f)
+                    print(f"   📊 Project ID: {cred_data.get('project_id')}")
+
+            if not firebase_admin._apps:
+                print(f"   🔧 Initializing Firebase Admin SDK...")
+                firebase_admin.initialize_app(cred)
+                print(f"   ✅ Firebase Admin SDK initialized")
+            else:
+                print(f"   ℹ️  Firebase Admin SDK already initialized")
+
+            print(f"   🔧 Getting Firestore client...")
+            self.db = firestore.client()
+            print(f"   ✅ Firestore client obtained: {self.db}")
+            print(f"   ✅ Client type: {type(self.db)}")
+
+            if self.db is None:
+                error_msg = "❌ CRITICAL: Firestore client is None!"
+                print(error_msg)
+                raise Exception(error_msg)
+
+            # Verify we can access Firebase
+            app = firebase_admin.get_app()
+            print(f"   ✅ Firebase app: {app.name}")
+            print(f"   ✅ Project ID: {app.project_id}")
+
+            print(f"✅ Firebase initialization SUCCESSFUL")
+            print(f"{'='*80}\n")
+
+        except Exception as e:
+            print(f"\n❌ FIREBASE INITIALIZATION FAILED!")
+            print(f"   Error type: {type(e).__name__}")
+            print(f"   Error message: {str(e)}")
+            print(f"{'='*80}\n")
+            import traceback
+            traceback.print_exc()
+            raise
     
     # ============================================
     # HELPER METHOD: Get user collection reference
@@ -98,16 +148,16 @@ class FirebaseClient:
     def delete_folder(self, folder_name: str, user_id: str):
         """Delete a folder and all its tasks"""
         folder_id = folder_name.lower().replace(" ", "_")
-        
+
         folder_ref = self._get_user_folders_ref(user_id).document(folder_id)
         if not folder_ref.get().exists:
             return f"Folder '{folder_name}' doesn't exist"
-        
+
         # Delete all tasks in folder
         tasks = self._get_user_tasks_ref(user_id).where('folder', '==', folder_id).stream()
         for task in tasks:
             task.reference.delete()
-        
+
         folder_ref.delete()
         return f"Deleted folder '{folder_name}'"
     
@@ -185,52 +235,183 @@ class FirebaseClient:
     # TASK OPERATIONS (UPDATED WITH USER_ID)
     # ============================================
     
-    def create_task(self, task_name: str, folder_name: str, user_id: str, recurrence: str = "once", 
-                     time: str = "", duration: str = "", due_date: str = ""):
+    def create_task(self, task_name: str, folder_name: str, user_id: str, due_date: str = "",  recurrence: str = "",
+                     time: str = "", duration: str = "",):
         """
         Create a new task for a specific user.
-        
+
         Args:
             task_name: Name of the task
             folder_name: Folder to place task in
             user_id: Firebase UID of the user
             recurrence: once, daily, weekly, etc.
             time: Time for the task
-            due_date: Due date for the task (e.g "2026-01-15")
-            duration: Duration estimate
+            due_date: Due date for the task in YYYY-MM-DD format (e.g "2026-01-15")
+            duration: Duration of the task if mentioned or else estimate
         """
-        folder_id = folder_name.lower().replace(" ", "_")
-        
-        # Check if folder exists for this user
-        print(f"🔧 Creating task: '{task_name}' in folder: '{folder_id}' for user: {user_id}")
-    
-        # Create task in user's tasks collection
-        task_ref = self._get_user_tasks_ref(user_id).document()
-        
-        task_data = {
-            'name': task_name,
-            'folder': folder_id,
-            'completed': False,
-            'recurrence': recurrence,
-            'time': time,
-            'due_date': due_date, 
-            'duration': duration,
-            
-            # Store UTC timestamp
-            'created_at': firestore.SERVER_TIMESTAMP,
-            
-            # Priority detection
-            'is_high_priority': self._detect_priority(task_name),
-            
-            # Completion tracking (initially null)
-            'completed_at': None,
-        }
-        
-        task_ref.set(task_data)
-        
-        priority_msg = " (High Priority)" if task_data['is_high_priority'] else ""
-        
-        return f"Created task '{task_name}'{priority_msg} in {folder_name}"
+        try:
+            folder_id = folder_name.lower().replace(" ", "_")
+
+            # EXTENSIVE LOGGING
+            print(f"\n{'='*80}")
+            print(f"🔧 CREATE_TASK CALLED")
+            print(f"{'='*80}")
+            print(f"📝 Task name: '{task_name}'")
+            print(f"📁 Folder: '{folder_name}' → '{folder_id}'")
+            print(f"👤 User ID: '{user_id}'")
+            print(f"🔄 Recurrence: '{recurrence}'")
+            print(f"⏰ Time: '{time}'")
+            print(f"📅 Due date: '{due_date}'")
+            print(f"⏱️  Duration: '{duration}'")
+
+            # Check folder exists — fuzzy match to handle typos like "Probelms" vs "Problems"
+            from difflib import SequenceMatcher as SM
+            folder_ref = self._get_user_folders_ref(user_id).document(folder_id)
+            if not folder_ref.get().exists:
+                # Try fuzzy matching against existing folders
+                all_folders = list(self._get_user_folders_ref(user_id).stream())
+                best_folder = None
+                best_sim = 0.0
+                for f in all_folders:
+                    f_id = f.id
+                    f_name = f.to_dict().get('name', f_id)
+                    sim = max(
+                        SM(None, folder_id, f_id).ratio(),
+                        SM(None, folder_name.lower(), f_name.lower()).ratio(),
+                    )
+                    if sim > best_sim:
+                        best_sim = sim
+                        best_folder = (f_id, f_name)
+
+                if best_folder and best_sim >= 0.75:
+                    # Auto-correct to the closest matching folder
+                    folder_id = best_folder[0]
+                    print(f"📁 Folder fuzzy match: '{folder_name}' → '{best_folder[1]}' ({best_sim:.0%})")
+                else:
+                    available = [f.to_dict().get('name', f.id) for f in all_folders]
+                    return (
+                        f"Folder '{folder_name}' doesn't exist. "
+                        f"Available folders: {', '.join(available)}. "
+                        f"Create the folder first or use an existing one."
+                    )
+
+            # Check for duplicate task name (fuzzy — catches spelling variations)
+            from difflib import SequenceMatcher
+            existing_tasks = list(self._get_user_tasks_ref(user_id).stream())
+            for existing in existing_tasks:
+                existing_data = existing.to_dict()
+                existing_name = existing_data.get('name', '')
+                similarity = SequenceMatcher(None, task_name.lower(), existing_name.lower()).ratio()
+                if similarity >= 0.80:
+                    existing_folder = existing_data.get('folder', 'unknown')
+                    return (
+                        f"Task '{existing_name}' already exists in folder '{existing_folder}' "
+                        f"(similarity: {similarity:.0%}). Use edit_task to modify it."
+                    )
+
+            processed_due_date = None
+            if due_date and due_date.strip():
+                try:
+                     dt = date_parser.parse(due_date.strip())
+            # Keep only the calendar date in ISO format
+                     processed_due_date = dt.date().isoformat()  # "2026-03-03"
+                     print(f"✅ Normalized due date: '{processed_due_date}' from '{due_date}'")
+                except Exception as e:
+                     print(f"⚠️ Could not parse due_date '{due_date}': {e}")
+                     processed_due_date = None 
+                # Parse to validate format
+                  
+
+            # Check Firebase client status
+            print(f"\n🔍 Checking Firebase client...")
+            print(f"   self.db: {self.db}")
+            print(f"   self.db type: {type(self.db)}")
+
+            if self.db is None:
+                error_msg = "❌ CRITICAL ERROR: self.db is None! Firebase not initialized!"
+                print(error_msg)
+                raise Exception(error_msg)
+
+            print(f"   ✅ Firebase client is initialized")
+
+            # Get tasks collection reference
+            print(f"\n🔍 Getting tasks collection reference...")
+            tasks_ref = self._get_user_tasks_ref(user_id)
+            print(f"   tasks_ref: {tasks_ref}")
+            print(f"   tasks_ref type: {type(tasks_ref)}")
+            print(f"   tasks_ref path: users/{user_id}/tasks")
+
+            # Create document reference
+            print(f"\n🔍 Creating task document reference...")
+            task_ref = tasks_ref.document()
+            print(f"   task_ref: {task_ref}")
+            print(f"   task_ref.id: {task_ref.id}")
+            print(f"   task_ref.path: {task_ref.path}")
+
+            # Prepare task data
+            print(f"\n🔍 Preparing task data...")
+            task_data = {
+                'name': task_name,
+                'folder': folder_id,
+                'completed': False,
+                'recurrence': recurrence,
+                'time': time,
+                'due_date': processed_due_date,
+                'duration': duration,
+
+                # Store UTC timestamp
+                'created_at': firestore.SERVER_TIMESTAMP,
+
+                # Priority detection
+                'is_high_priority': self._detect_priority(task_name),
+
+                # Completion tracking (initially null)
+                'completed_at': None,
+            }
+
+            print(f"   Task data prepared:")
+            for key, value in task_data.items():
+                print(f"      {key}: {value}")
+
+            # CRITICAL: Write to Firestore
+            print(f"\n🔧 WRITING TO FIRESTORE...")
+            print(f"   Path: {task_ref.path}")
+
+            write_result = task_ref.set(task_data)
+
+            print(f"   ✅✅✅ WRITE SUCCESSFUL!")
+            print(f"   Write result: {write_result}")
+            print(f"   Update time: {write_result.update_time if hasattr(write_result, 'update_time') else 'N/A'}")
+
+            # Verify write (optional but useful for debugging)
+            print(f"\n🔍 Verifying task was written...")
+            verification = task_ref.get()
+
+            if verification.exists:
+                print(f"   ✅ VERIFICATION SUCCESSFUL - Task exists in Firestore!")
+                verified_data = verification.to_dict()
+                print(f"   Verified task name: {verified_data.get('name')}")
+            else:
+                print(f"   ⚠️  WARNING: Task does not exist after write (might be eventual consistency)")
+
+            priority_msg = " (High Priority)" if task_data['is_high_priority'] else ""
+
+            success_msg = f"Created task '{task_name}'{priority_msg} in {folder_name}"
+            print(f"\n✅ {success_msg}")
+            print(f"{'='*80}\n")
+
+            return success_msg
+
+        except Exception as e:
+            error_msg = f"❌ EXCEPTION in create_task: {type(e).__name__}: {str(e)}"
+            print(f"\n{'='*80}")
+            print(error_msg)
+            print(f"{'='*80}\n")
+
+            import traceback
+            traceback.print_exc()
+
+            raise  # Re-raise to propagate error
 
     def _detect_priority(self, task_name: str):
         """Detect if task is high priority from name"""
@@ -244,19 +425,21 @@ class FirebaseClient:
     def mark_task_complete(self, task_name: str, user_id: str):
         """Mark task complete for specific user"""
         tasks = self._get_user_tasks_ref(user_id).stream()
-        
+
         for task in tasks:
             task_data = task.to_dict()
             if task_data['name'].lower() == task_name.lower():
                 task_ref = self._get_user_tasks_ref(user_id).document(task.id)
-                
+
+                now_utc = datetime.now(pytz.UTC)
                 task_ref.update({
                     'completed': True,
                     'completed_at': firestore.SERVER_TIMESTAMP,
+                    'completed_day': now_utc.strftime("%A"),
                 })
-                
+
                 return f"Marked '{task_name}' as complete ✅"
-        
+
         return f"Task '{task_name}' not found."
     
     def mark_task_incomplete(self, task_name: str, user_id: str):
@@ -296,9 +479,11 @@ class FirebaseClient:
                 return "Task not found"
             
             if completed:
+                now_utc = datetime.now(pytz.UTC)
                 task_ref.update({
                     'completed': True,
-                    'completed_at': firestore.SERVER_TIMESTAMP
+                    'completed_at': firestore.SERVER_TIMESTAMP,
+                    'completed_day': now_utc.strftime("%A"),
                 })
                 return "success"
             else:
@@ -344,7 +529,7 @@ class FirebaseClient:
         return f"Task '{task_name}' not found"
     
     def edit_task(self, old_task_name: str, new_task_name: str = None, new_folder: str = None,
-                  new_recurrence: str = None, new_time: str = None, new_duration: str = None, user_id: str = None):
+                  new_recurrence: str = None, new_time: str = None, new_duration: str = None, new_due_date: str = None,  user_id: str = None):
         """Edit task properties for specific user"""
         tasks = self._get_user_tasks_ref(user_id).stream()
         
@@ -369,6 +554,8 @@ class FirebaseClient:
                     updates['time'] = new_time
                 if new_duration is not None:
                     updates['duration'] = new_duration
+                if new_due_date is not None: 
+                    updates['due_date'] = new_due_date     
                 
                 if updates:
                     task.reference.update(updates)
@@ -463,7 +650,15 @@ class FirebaseClient:
             
             # ISO string (pass through)
             elif isinstance(timestamp, str):
-                return timestamp
+
+                if timestamp.strip(): 
+                    try: 
+                        datetime.strptime(timestamp.strip(), "%Y-%m-%d")
+                        return timestamp.strip()
+                    except ValueError: 
+                       return timestamp
+
+                return None     
             
             return None
         

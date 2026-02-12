@@ -1,7 +1,8 @@
-from langchain_core.tools import tool 
+from langchain_core.tools import tool
 from utils.firebase_client import FirebaseClient
-from datetime import datetime 
-import pytz 
+from datetime import datetime
+import pytz
+import re
 import inspect
 
 firebase_client = FirebaseClient()
@@ -55,32 +56,51 @@ def create_task(
     folder_name: str, 
     duration: str = "", 
     due_date: str = "",
-    recurrence: str = "once", 
+    recurrence: str = "", 
     time: str = ""
 ) -> str: 
     """Create a new task in a folder.
     
     Args:
         task_name: Name of the task
-        folder_name: Folder to put task in (daily_tasks, personal_tasks, work)
+        folder_name: Folder to put task in (e.g., "Work", "Personal", "School")
         duration: How long the task takes (e.g., "30 minutes", "1 hour")
-        due_date: When the task is due (e.g., "2026-01-15", "January 15, 2026")
-        recurrence: "once", "daily", "weekly"
-        time: When to do the task (optional)
+        due_date: Due date in YYYY-MM-DD format (MUST be from date tool, not calculated)
+        recurrence: "once", "daily", "weekly" (default: "once")
+        time: When to do the task (optional, e.g., "9:00 AM")
+    
+    CRITICAL: due_date MUST come from a date tool (get_next_weekday, get_date_in_days, etc.)
+    NEVER pass strings like "tomorrow" or "next Monday" - they will be rejected.
+    NEVER calculate dates yourself - you will hallucinate wrong years like 2022.
+    
+    Examples:
+        User says "task due next Monday"
+        Step 1: Call get_next_weekday("Monday") → returns "2026-02-10"
+        Step 2: Call create_task(task_name="Task", folder_name="work", due_date="2026-02-10")
     """
     user_id = get_user_id_from_context()
-    
-    result = firebase_client.create_task(
-        task_name, 
-        folder_name, 
-        user_id,
-        recurrence,
-        time,
-        duration,
-        due_date
-    )
-    return result
 
+    # Validate due_date format — reject anything that isn't YYYY-MM-DD
+    if due_date and due_date.strip():
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", due_date.strip()):
+            return (
+                f"ERROR: due_date '{due_date}' is not in YYYY-MM-DD format. "
+                "You MUST call a date tool first (get_next_weekday, get_date_in_days, "
+                "parse_relative_date) and use the YYYY-MM-DD value from its output."
+            )
+
+    result = firebase_client.create_task(
+        task_name=task_name,
+        folder_name=folder_name,
+        user_id=user_id,
+        recurrence=recurrence,
+        time=time,
+        duration=duration,
+        due_date=due_date
+    )
+
+    return result
+        
 
 # ============================================
 # OPERATIONS WITH FUZZY MATCHING
@@ -187,25 +207,25 @@ def delete_task(task_description: str) -> str:
 def delete_folder(folder_description: str) -> str:
     """
     Delete a folder using natural language.
-    
+
     Args:
         folder_description: How you describe the folder
     """
     from utils.intent_resolver import intent_resolver
-    
+
     user_id = get_user_id_from_context()
-    
+
     match = intent_resolver.resolve_folder_name(folder_description, user_id=user_id)
-    
+
     if not match:
         suggestions = intent_resolver.get_folder_suggestions(folder_description, user_id=user_id)
         if suggestions:
             suggestion_list = "\n".join([f"  • {s['emoji']} {s['name']}" for s in suggestions])
             return f"❌ Couldn't find folder matching '{folder_description}'.\n\nAvailable folders:\n{suggestion_list}"
         return f"No folders found matching '{folder_description}'"
-    
+
     result = firebase_client.delete_folder(match['exact_name'], user_id)
-    
+
     return f"🗑️ {result}"
 
 
@@ -243,16 +263,17 @@ def move_task(task_description: str, destination_folder_description: str) -> str
 
 @tool
 def edit_task(
-    task_description: str, 
-    new_task_name: str = None, 
-    new_folder_description: str = None, 
-    new_recurrence: str = None, 
-    new_time: str = None, 
-    new_duration: str = None
+    task_description: str,
+    new_task_name: str = None,
+    new_folder_description: str = None,
+    new_recurrence: str = None,
+    new_time: str = None,
+    new_duration: str = None,
+    new_due_date: str = None
 ) -> str:
     """
     Edit properties of an existing task using natural language.
-    
+
     Args:
         task_description: Current task (natural language)
         new_task_name: New name for the task (optional)
@@ -260,6 +281,7 @@ def edit_task(
         new_recurrence: New recurrence ("once", "daily", "weekly") (optional)
         new_time: New time for the task (optional)
         new_duration: New duration (optional)
+        new_due_date: New due date in YYYY-MM-DD format (MUST be from a date tool, optional)
     """
     from utils.intent_resolver import intent_resolver
     
@@ -270,6 +292,14 @@ def edit_task(
     if not task_match:
         return f"❌ Couldn't find task matching '{task_description}'"
     
+    # Validate new_due_date format
+    if new_due_date and new_due_date.strip():
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", new_due_date.strip()):
+            return (
+                f"ERROR: new_due_date '{new_due_date}' is not in YYYY-MM-DD format. "
+                "You MUST call a date tool first and use the YYYY-MM-DD value from its output."
+            )
+
     # Resolve new folder if specified
     new_folder_exact = None
     if new_folder_description:
@@ -278,7 +308,7 @@ def edit_task(
             new_folder_exact = folder_match['exact_name']
         else:
             return f"❌ Couldn't find folder matching '{new_folder_description}'"
-    
+
     result = firebase_client.edit_task(
         old_task_name=task_match['exact_name'],
         new_task_name=new_task_name,
@@ -286,6 +316,7 @@ def edit_task(
         new_recurrence=new_recurrence,
         new_time=new_time,
         new_duration=new_duration,
+        new_due_date=new_due_date,
         user_id=user_id
     )
     

@@ -1,0 +1,154 @@
+{
+  "timestamp": "2026-02-02T17:10:17.701377",
+  "test_set": "small",
+  "total_tests": 18,
+  "passed": 18,
+  "failed": 0,
+  "accuracy": 1.0,
+  "results": [
+    {
+      "test_id": "RT001",
+      "input": "Add buy groceries to my list",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Creating a new task"
+    },
+    {
+      "test_id": "RT002",
+      "input": "Remind me to call mom tomorrow at 5pm",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Creating task with specific time"
+    },
+    {
+      "test_id": "RT003",
+      "input": "I need to finish the project proposal by Friday",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Creating task with deadline"
+    },
+    {
+      "test_id": "RT004",
+      "input": "Create a folder called Work Projects",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Creating a folder"
+    },
+    {
+      "test_id": "RT005",
+      "input": "I'm done with my workout",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Marking task complete"
+    },
+    {
+      "test_id": "RT019",
+      "input": "How's my week going?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Progress review - pattern seeking"
+    },
+    {
+      "test_id": "RT020",
+      "input": "When do I usually complete tasks?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Asking about behavioral patterns"
+    },
+    {
+      "test_id": "RT021",
+      "input": "What time am I most productive?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Productivity pattern analysis"
+    },
+    {
+      "test_id": "RT022",
+      "input": "Did I get anything done today?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Historical completion review"
+    },
+    {
+      "test_id": "RT023",
+      "input": "What did I accomplish this week?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Achievement history"
+    },
+    {
+      "test_id": "RT024",
+      "input": "Which tasks did I complete yesterday?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Past completions query"
+    },
+    {
+      "test_id": "RT025",
+      "input": "Show me what I finished last month",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Historical completion data"
+    },
+    {
+      "test_id": "RT026",
+      "input": "Am I behind on stuff?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Procrastination check"
+    },
+    {
+      "test_id": "RT027",
+      "input": "What am I avoiding?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Procrastination analysis"
+    },
+    {
+      "test_id": "RT028",
+      "input": "How am I doing with my goals?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Performance accountability"
+    },
+    {
+      "test_id": "RT034",
+      "input": "What have I been working on?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "Past tense - historical pattern"
+    },
+    {
+      "test_id": "RT035",
+      "input": "What am I working on?",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Present tense - current state"
+    },
+    {
+      "test_id": "RT036",
+      "input": "What should I work on?",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Future/current - task list"
+    }
+  ]
+}

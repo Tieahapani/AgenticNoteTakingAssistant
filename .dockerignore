@@ -1,0 +1,28 @@
+# Python
+__pycache__/          # Compiled Python files - don't need in Docker
+*.pyc
+venv/                 # Virtual environment - Docker creates its own
+env/
+
+# Database files
+*.db                  # SQLite files - mounted as volumes instead
+*.db-shm
+*.db-wal
+
+# Environment and secrets
+.env                  # Your API keys - passed via docker-compose
+firebase-credentials.json  # Mounted as volume
+
+# Git
+.git/                # Git history not needed
+.gitignore
+
+# Logs
+logs/                # Mounted as volume
+*.log
+
+# macOS
+.DS_Store            # Mac system files
+
+# Testing
+test_*.py            # Test files not needed in production

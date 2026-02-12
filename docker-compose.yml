@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: voicetask-db
+    environment:
+      POSTGRES_DB: voicelog_memory
+      POSTGRES_USER: voicelog_user
+      POSTGRES_PASSWORD: voicelog_password_123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voicelog_user -d voicelog_memory"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - voicetask-network
+
+  # Flask Backend
+  backend:
+    build: .
+    container_name: voicetask-backend
+    ports:
+      - "5001:5000"
+    environment:
+      # Database configuration
+      USE_SQLITE: ${USE_SQLITE:-false}
+      POSTGRES_URL: postgresql://voicelog_user:voicelog_password_123@db:5432/voicelog_memory
+      
+      # API Keys (loaded from .env file)
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY}
+      LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-true}
+      LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT:-voicelog-db}
+      LANGCHAIN_ENDPOINT: ${LANGCHAIN_ENDPOINT:-https://api.smith.langchain.com}
+      
+      # Firebase credentials (mount the file directly)
+      FIREBASE_CREDENTIALS_PATH: /app/firebase-credentials.json
+      
+      # Flask settings
+      FLASK_ENV: production
+      PORT: 5000
+      
+    volumes:
+      # Mount logs directory for persistence
+      - ./logs:/app/logs
+      # Mount SQLite database files for LangGraph checkpointing
+      - ./voicelog_memory.db:/app/voicelog_memory.db
+      - ./voicelog_memory.db-shm:/app/voicelog_memory.db-shm
+      - ./voicelog_memory.db-wal:/app/voicelog_memory.db-wal
+      # Mount Firebase credentials file
+      - ./firebase-credentials.json:/app/firebase-credentials.json:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - voicetask-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  voicetask-network:
+    driver: bridge

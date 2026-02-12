@@ -113,6 +113,13 @@ class IntentResolver:
         
         return best_match
     
+    # Generic words that appear often and shouldn't drive matching
+    STOP_WORDS = {
+        'task', 'tasks', 'the', 'a', 'an', 'to', 'for', 'in', 'on', 'at',
+        'my', 'me', 'i', 'do', 'it', 'is', 'of', 'and', 'or', 'with',
+        'this', 'that', 'from', 'up', 'by', 'be', 'set', 'get', 'new',
+    }
+
     def _fuzzy_match(
         self,
         user_input: str,
@@ -122,25 +129,27 @@ class IntentResolver:
     ) -> Optional[Dict]:
         """
         Core fuzzy matching algorithm.
-        
+
         Returns the best matching candidate with confidence score.
         """
         if not candidates:
             return None
-        
+
         user_lower = user_input.lower().strip()
         user_words = set(user_lower.split())
-        
+        # Content words = query words minus stop words
+        user_content_words = user_words - self.STOP_WORDS
+
         best_candidate = None
         best_score = 0.0
-        
+
         for candidate in candidates:
             candidate_text = candidate.get(key_field, '').lower()
             candidate_words = set(candidate_text.split())
-            
+
             # Scoring algorithm
             score = 0.0
-            
+
             # 1. Exact substring match (highest priority)
             if user_lower in candidate_text:
                 score = 0.95
@@ -149,32 +158,36 @@ class IntentResolver:
             else:
                 # 2. Fuzzy string similarity (Levenshtein-based)
                 fuzzy_score = SequenceMatcher(None, user_lower, candidate_text).ratio()
-                
-                # 3. Keyword overlap
-                word_overlap = len(user_words & candidate_words)
-                if word_overlap > 0:
-                    keyword_score = word_overlap / max(len(user_words), len(candidate_words))
-                    # Boost keyword score
-                    keyword_score *= 0.85
+
+                # 3. Keyword overlap — weight content words higher than stop words
+                content_overlap = len(user_content_words & candidate_words)
+                all_overlap = len(user_words & candidate_words)
+                if content_overlap > 0:
+                    # Content word matches scored against query size (not max)
+                    keyword_score = (content_overlap / max(len(user_content_words), 1)) * 0.90
+                elif all_overlap > 0:
+                    # Only stop-word overlap — much lower score
+                    keyword_score = (all_overlap / max(len(user_words), len(candidate_words))) * 0.40
                 else:
                     keyword_score = 0.0
-                
-                # 4. Partial word matching (e.g., "shoulder" matches "shoulder press")
+
+                # 4. Partial word matching — only count content words, min 3 chars
                 partial_matches = sum(
-                    1 for u_word in user_words
+                    1 for u_word in user_content_words
                     for c_word in candidate_words
-                    if u_word in c_word or c_word in u_word
+                    if len(u_word) >= 3 and len(c_word) >= 3
+                    and (u_word in c_word or c_word in u_word)
                 )
-                partial_score = partial_matches / max(len(user_words), len(candidate_words)) * 0.7
-                
+                partial_score = partial_matches / max(len(user_content_words), 1) * 0.7 if user_content_words else 0.0
+
                 # Take the best score
                 score = max(fuzzy_score, keyword_score, partial_score)
-            
+
             # Update best match
             if score > best_score:
                 best_score = score
                 best_candidate = candidate
-        
+
         # Only return if above threshold
         if best_score >= threshold:
             return {
@@ -182,7 +195,7 @@ class IntentResolver:
                 'exact_name': best_candidate[key_field],
                 'confidence': best_score
             }
-        
+
         return None
     
     def get_task_suggestions(self, user_input: str, limit: int = 5, only_incomplete: bool = False, user_id: str = None) -> List[Dict]:

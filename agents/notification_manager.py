@@ -217,8 +217,9 @@ class NotificationManager:
             True if duplicate found, False otherwise
         """
         notif_type = notification.get('type', '')
+        task_id = notification.get('data', {}).get('task_id')
         cutoff_time = datetime.now() - timedelta(hours=24)
-        
+
         for sent in self.state.get("notification_history", []):
             try:
                 sent_timestamp = sent.get("timestamp", "")
@@ -226,14 +227,19 @@ class NotificationManager:
                     sent_time = datetime.fromisoformat(sent_timestamp.replace('Z', '+00:00'))
                 else:
                     sent_time = sent_timestamp
-                
+
                 sent_time = sent_time.replace(tzinfo=None)
-                
+
                 if sent_time > cutoff_time and sent.get("type") == notif_type:
-                    return True
-            except Exception as e:
+                    # For per-task types, also match on task_id
+                    if task_id:
+                        if sent.get("task_id") == task_id:
+                            return True
+                    else:
+                        return True
+            except Exception:
                 continue
-        
+
         return False
     
     def record_sent(self, notification: Dict):
@@ -256,6 +262,7 @@ class NotificationManager:
         history_entry = {
             "type": notification.get('type'),
             "priority": notification.get('priority'),
+            "task_id": notification.get('data', {}).get('task_id'),
             "timestamp": datetime.now().isoformat()
         }
         

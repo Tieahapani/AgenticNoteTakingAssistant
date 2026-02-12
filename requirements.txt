@@ -1,21 +1,23 @@
 flask==3.0.0
-flask-socketio==5.3.6
 flask-cors==4.0.0
-python-socketio==5.10.0
 firebase-admin==6.3.0
 langchain==1.2.4
 langchain-openai==1.1.7
 langchain-core==1.2.7
 langgraph==1.0.6
+langgraph-prebuilt==1.0.5
 openai>=1.54.0
 python-dotenv==1.0.0
 psycopg[binary]>=3.2.1
 psycopg-pool>=3.2.0
 python-dateutil==2.8.2
 pytz==2024.1
-gunicorn==21.2.0
-eventlet==0.36.1
-gevent>=24.2.1
-gevent-websocket>=0.10.1
-langgraph-checkpoint-sqlite==3.0.1 
+
+langgraph-checkpoint-sqlite==3.0.1
 langgraph-checkpoint-postgres==3.0.2
+
+# Speech-to-text (Whisper)
+faster-whisper>=1.0.0
+
+# Production server dependencies
+gunicorn>=21.2.0

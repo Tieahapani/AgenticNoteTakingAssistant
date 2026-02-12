@@ -4,13 +4,14 @@ from datetime import datetime, timedelta
 from langchain_core.tools import tool
 from zoneinfo import ZoneInfo
 
+
 @tool
 def get_current_date(timezone: str) -> str:
     """
     Get the current date and time in the user's timezone.
     
     Args:
-        timezone: User's timezone (default: Asia/Kolkata)
+        timezone: User's timezone (American/Los_Angeles)
     
     Returns:
         Current date and time in format: "Saturday, January 10, 2026 at 3:45 PM IST"
@@ -34,7 +35,7 @@ def get_date_in_days(days: int, timezone: str ) -> str:
     
     Args:
         days: Number of days from today (can be negative for past dates)
-        timezone: User's timezone (default: Asia/Kolkata)
+        timezone: User's timezone (default: American/Los_Angeles)
     
     Returns:
         Date in format: "Monday, January 15, 2026"
@@ -46,8 +47,10 @@ def get_date_in_days(days: int, timezone: str ) -> str:
     try:
         tz = ZoneInfo(timezone)
         target_date = datetime.now(tz) + timedelta(days=days)
-        
-        return target_date.strftime("%A, %B %d, %Y")
+
+        human = target_date.strftime("%A, %B %d, %Y")
+        iso = target_date.strftime("%Y-%m-%d")
+        return f"{human} ({iso})"
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -88,8 +91,10 @@ def get_next_weekday(weekday: str, timezone: str) -> str:
             days_ahead += 7
         
         target_date = today + timedelta(days=days_ahead)
-        
-        return target_date.strftime("%A, %B %d, %Y")
+
+        human = target_date.strftime("%A, %B %d, %Y")
+        iso = target_date.strftime("%Y-%m-%d")
+        return f"{human} ({iso})"
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -197,8 +202,10 @@ def parse_relative_date(description: str, timezone: str) -> str:
         
         else:
             return f"Error: Could not parse '{description}'. Try 'tomorrow', 'in X days', 'summer 2026', or 'January 15, 2027'"
-        
-        return target_date.strftime("%A, %B %d, %Y")
+
+        human = target_date.strftime("%A, %B %d, %Y")
+        iso = target_date.strftime("%Y-%m-%d")
+        return f"{human} ({iso})"
     
     except Exception as e:
         return f"Error: {str(e)}"    

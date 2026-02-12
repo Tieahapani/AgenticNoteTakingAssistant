@@ -1,0 +1,90 @@
+{
+  "timestamp": "2026-02-02T17:24:22.743631",
+  "test_set": "small",
+  "total_tests": 10,
+  "passed": 9,
+  "failed": 1,
+  "accuracy": 0.9,
+  "results": [
+    {
+      "test_id": "RT001",
+      "input": "Add buy groceries to my list",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Creating a new task"
+    },
+    {
+      "test_id": "RT004",
+      "input": "Tell me what is there in my Work folder",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Viewing a folder"
+    },
+    {
+      "test_id": "RT005",
+      "input": "I'm done with my workout and I need to set up a daily routine for that",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Marking task complete"
+    },
+    {
+      "test_id": "RT006",
+      "input": "Mark the grocery task as complete",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Explicit complete action"
+    },
+    {
+      "test_id": "RT007",
+      "input": "I finished reading the book",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Implicit task completion"
+    },
+    {
+      "test_id": "RT008",
+      "input": "Delete the dentist appointment",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Deleting a task"
+    },
+    {
+      "test_id": "RT009",
+      "input": "Move the grocery task to Shopping folder",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Moving task between folders"
+    },
+    {
+      "test_id": "RT010",
+      "input": "Change the project deadline to next Monday",
+      "expected": "crud",
+      "actual": "crud",
+      "passed": true,
+      "reasoning": "Editing task details"
+    },
+    {
+      "test_id": "RT035",
+      "input": "Have I been failing with completing tasks?",
+      "expected": "analysis",
+      "actual": "analysis",
+      "passed": true,
+      "reasoning": "performance"
+    },
+    {
+      "test_id": "RT036",
+      "input": "What time of the day am I most productive?",
+      "expected": "crud",
+      "actual": "analysis",
+      "passed": false,
+      "reasoning": "Future/current - task list"
+    }
+  ]
+}

@@ -150,18 +150,44 @@ Provide Title and Body."""
     # ========================================
     
     def check_high_priority_tasks(self, tasks):
-        """Alert on high priority tasks that aren't completed"""
+        """Alert on high priority tasks untouched for 24+ hours"""
         insights = []
         now = datetime.now(timezone.utc)
-        
-        incomplete_priority = [
-            t for t in tasks 
-            if t.get('is_high_priority') and not t.get('completed')
-        ]
-        
-        if len(incomplete_priority) >= 3:
-            task_names = [t['name'] for t in incomplete_priority[:5]]
-            
+
+        incomplete_priority = []
+        for t in tasks:
+            if not t.get('is_high_priority') or t.get('completed'):
+                continue
+
+            created_at = t.get('created_at')
+            if not created_at:
+                continue
+
+            try:
+                if isinstance(created_at, str):
+                    created_dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                elif hasattr(created_at, 'astimezone'):
+                    created_dt = created_at
+                else:
+                    continue
+
+                if created_dt.tzinfo is None:
+                    created_dt = created_dt.replace(tzinfo=timezone.utc)
+
+                hours_old = (now - created_dt).total_seconds() / 3600
+
+                if hours_old >= 24:
+                    incomplete_priority.append({
+                        "task_name": t['name'],
+                        "task_id": t['id'],
+                        "hours_untouched": round(hours_old, 1),
+                        "days_untouched": round(hours_old / 24, 1),
+                        "folder": t.get('folder', '')
+                    })
+            except Exception:
+                continue
+
+        if incomplete_priority:
             insight = {
                 "type": "priority_alert",
                 "priority": "high",
@@ -170,12 +196,14 @@ Provide Title and Body."""
                 "dismissed": False,
                 "data": {
                     "count": len(incomplete_priority),
-                    "task_names": task_names
+                    "task_names": [t['task_name'] for t in incomplete_priority[:5]],
+                    "tasks": incomplete_priority[:5],
+                    "oldest_hours": max(t['hours_untouched'] for t in incomplete_priority)
                 },
             }
             insights.append(insight)
-            self.log(f"⚡ Generated priority alert: {len(incomplete_priority)} tasks")
-        
+            self.log(f"⚡ Generated priority alert: {len(incomplete_priority)} tasks untouched 24hr+")
+
         return insights
     
     def check_folder_activity(self, tasks):
@@ -275,61 +303,165 @@ Provide Title and Body."""
         
         return insights
     
-    def check_stale_tasks(self, tasks):
-        """Detect tasks sitting incomplete for >3 days"""
+    def check_stale_tasks(self, tasks, user_timezone="UTC"):
+        """Detect tasks without due_date sitting incomplete for >7 days.
+        Tasks WITH due_date are handled by check_due_date_approaching.
+        High-priority stale tasks escalate to 'high' priority."""
         insights = []
         now = datetime.now(timezone.utc)
-        stale_threshold = now - timedelta(days=3)
-        
+
+        try:
+            from zoneinfo import ZoneInfo
+            local_tz = ZoneInfo(user_timezone)
+        except ImportError:
+            import pytz
+            local_tz = pytz.timezone(user_timezone)
+
+        now_local = now.astimezone(local_tz)
+        today_local = now_local.date()
+
         stale_tasks_found = []
-        
+
         for task in tasks:
             if task.get('completed'):
                 continue
-            
+
+            # Skip tasks with due_date — handled by check_due_date_approaching
+            due_date_str = task.get('due_date', '')
+            if due_date_str and due_date_str.strip():
+                continue
+
             created_at = task.get('created_at')
             if not created_at:
                 continue
-            
+
             try:
-                # Handle both string and Firestore Timestamp
                 if isinstance(created_at, str):
                     created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
                 elif hasattr(created_at, 'astimezone'):
-                    # Already a datetime object
                     pass
                 else:
                     continue
-                
-                if created_at < stale_threshold:
-                    days_old = (now - created_at.replace(tzinfo=timezone.utc)).days
+
+                created_local = created_at.astimezone(local_tz)
+                age_days = (today_local - created_local.date()).days
+
+                if age_days >= 7:
                     stale_tasks_found.append({
                         "task_id": task['id'],
                         "task_name": task['name'],
-                        "days_old": days_old
+                        "days_old": age_days,
+                        "is_high_priority": task.get('is_high_priority', False),
+                        "folder": task.get('folder', '')
                     })
-            
-            except Exception as e:
+            except Exception:
                 continue
-        
-        # Create ONE insight for all stale tasks
+
         if stale_tasks_found:
-            insight = {
-                "type": "stale_task_warning",
-                "priority": "medium",
-                "created_at": now.isoformat(),
-                "read": False,
-                "dismissed": False,
-                "data": {
-                    "count": len(stale_tasks_found),
-                    "tasks": stale_tasks_found[:3]
-                },
-            }
-            insights.append(insight)
-            self.log(f"📌 Generated stale task warning: {len(stale_tasks_found)} tasks")
-        
+            high_priority_stale = [t for t in stale_tasks_found if t['is_high_priority']]
+            normal_stale = [t for t in stale_tasks_found if not t['is_high_priority']]
+
+            if high_priority_stale:
+                insights.append({
+                    "type": "high_priority_stale_warning",
+                    "priority": "high",
+                    "created_at": now.isoformat(),
+                    "read": False,
+                    "dismissed": False,
+                    "data": {
+                        "count": len(high_priority_stale),
+                        "tasks": high_priority_stale[:3]
+                    }
+                })
+
+            if normal_stale:
+                insights.append({
+                    "type": "stale_task_warning",
+                    "priority": "medium",
+                    "created_at": now.isoformat(),
+                    "read": False,
+                    "dismissed": False,
+                    "data": {
+                        "count": len(normal_stale),
+                        "tasks": normal_stale[:3]
+                    }
+                })
+
+            self.log(f"📌 Stale tasks: {len(stale_tasks_found)} ({len(high_priority_stale)} high priority)")
+
         return insights
     
+    def check_due_date_approaching(self, tasks, user_timezone="UTC"):
+        """Check for tasks with approaching or past due dates."""
+        insights = []
+        now = datetime.now(timezone.utc)
+
+        try:
+            from zoneinfo import ZoneInfo
+            local_tz = ZoneInfo(user_timezone)
+        except ImportError:
+            import pytz
+            local_tz = pytz.timezone(user_timezone)
+
+        now_local = now.astimezone(local_tz)
+        today_local = now_local.date()
+
+        for task in tasks:
+            if task.get('completed'):
+                continue
+
+            due_date_str = task.get('due_date', '')
+            if not due_date_str or not due_date_str.strip():
+                continue
+
+            try:
+                due_date = datetime.strptime(due_date_str.strip(), "%Y-%m-%d").date()
+            except ValueError:
+                continue
+
+            days_until = (due_date - today_local).days
+            task_data = {
+                "task_id": task['id'],
+                "task_name": task['name'],
+                "due_date": due_date_str.strip(),
+                "is_high_priority": task.get('is_high_priority', False),
+                "folder": task.get('folder', '')
+            }
+
+            if days_until < 0:
+                task_data["days_overdue"] = abs(days_until)
+                insights.append({
+                    "type": "due_date_overdue",
+                    "priority": "high",
+                    "created_at": now.isoformat(),
+                    "read": False,
+                    "dismissed": False,
+                    "data": task_data
+                })
+            elif days_until == 0:
+                insights.append({
+                    "type": "due_date_today",
+                    "priority": "medium",
+                    "created_at": now.isoformat(),
+                    "read": False,
+                    "dismissed": False,
+                    "data": task_data
+                })
+            elif days_until == 1:
+                insights.append({
+                    "type": "due_date_tomorrow",
+                    "priority": "low",
+                    "created_at": now.isoformat(),
+                    "read": False,
+                    "dismissed": False,
+                    "data": task_data
+                })
+
+        if insights:
+            self.log(f"📅 Due date insights: {len(insights)}")
+
+        return insights
+
     # ========================================
     # SAVE TO FIREBASE (UPDATED FOR USER SCOPING)
     # ========================================
@@ -441,15 +573,18 @@ Provide Title and Body."""
         
         self.log("\n--- Checking High Priority Tasks ---")
         all_insights.extend(self.check_high_priority_tasks(tasks))
-        
+
+        self.log("\n--- Checking Due Dates ---")
+        all_insights.extend(self.check_due_date_approaching(tasks, user_timezone))
+
         self.log("\n--- Checking Folder Activity ---")
         all_insights.extend(self.check_folder_activity(tasks))
-        
+
         self.log("\n--- Checking Completion Patterns ---")
         all_insights.extend(self.check_completion_patterns(tasks, user_timezone))
-        
+
         self.log("\n--- Checking Stale Tasks ---")
-        all_insights.extend(self.check_stale_tasks(tasks))
+        all_insights.extend(self.check_stale_tasks(tasks, user_timezone))
         
         # Step 3: Save to Firebase with smart filtering
         self.save_insights_to_firebase(all_insights, socketio, user_id)
